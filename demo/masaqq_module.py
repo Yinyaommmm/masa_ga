@@ -156,8 +156,6 @@ class MASAQQ:
             if hasattr(instances, 'labels') and len(instances.labels) > 0:
                 frame_labels = instances.labels.cpu().numpy().tolist()
                 all_labels.update(frame_labels)
-                if (2 in frame_labels or 3 in frame_labels):
-                    print("发现非机动车或三轮车，可能需要调整分类映射,instances: ",instances)
         
         # 将收集的标签ID映射为粗分类枚举类型
         categories = [map_label(label) for label in sorted(all_labels)]
