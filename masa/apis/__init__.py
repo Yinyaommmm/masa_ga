@@ -6,5 +6,5 @@ __all__ = [
     "inference_masa",
     "init_masa",
     "inference_detector",
-    "build_test_pipeline",
+    "build_test_pipeline"
 ]

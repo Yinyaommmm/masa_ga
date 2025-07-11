@@ -39,27 +39,57 @@ def denormalize_bbox(norm_bbox: List[float], image_shape: Tuple[int, int]) -> Li
     ]
 
 
+# def group_instances_by_id(pred_instances_list: List[dict]) -> Dict[int, List[Tuple[int, List[float], float, int]]]:
+#     """
+#     本函数用于整理pred_instances_list中的实例数据,  将所有 instance 的 bbox 按 instance_id 分组（归一化坐标 + 分数 + 标签）
+#     返回的Dict格式: {instance_id , List[(frame_idx, norm_bbox, score, label)]}
+#     """
+#     instance_dict = defaultdict(list)
+#     for frame_idx, inst_data in enumerate(pred_instances_list):
+#         if inst_data is None:
+#             continue
+#         ids = inst_data.get("instances_id", None)
+#         bboxes = inst_data.get("bboxes", None)
+#         scores = inst_data.get("scores", None)
+#         labels = inst_data.get("labels", None)
+#         if ids is None or bboxes is None:
+#             continue
+
+#         for i in range(len(ids)):
+#             inst_id = int(ids[i].item())
+#             norm_bbox = bboxes[i].tolist()
+#             score = float(scores[i].item()) if scores is not None else 1.0
+#             label = int(labels[i].item()) if labels is not None else -1
+#             instance_dict[inst_id].append((frame_idx, norm_bbox, score, label))
+
+#     return instance_dict
+
 def group_instances_by_id(pred_instances_list: List[dict]) -> Dict[int, List[Tuple[int, List[float], float, int]]]:
     """
-    本函数用于整理pred_instances_list中的实例数据,  将所有 instance 的 bbox 按 instance_id 分组（归一化坐标 + 分数 + 标签）
-    返回的Dict格式: {instance_id , List[(frame_idx, norm_bbox, score, label)]}
+    整理 pred_instances_list 中的实例数据，将所有 instance 按 instance_id 分组。
+    返回格式: {instance_id: [(frame_idx, norm_bbox, score, label), ...]}
+    其中，norm_bbox是List[float]，score是float，label是int。
     """
     instance_dict = defaultdict(list)
+
     for frame_idx, inst_data in enumerate(pred_instances_list):
         if inst_data is None:
             continue
-        ids = inst_data.get("instances_id", None)
-        bboxes = inst_data.get("bboxes", None)
-        scores = inst_data.get("scores", None)
-        labels = inst_data.get("labels", None)
+
+        ids = inst_data.get("instances_id")
+        bboxes = inst_data.get("bboxes")
+        scores = inst_data.get("scores")
+        labels = inst_data.get("labels")
+
         if ids is None or bboxes is None:
             continue
 
         for i in range(len(ids)):
-            inst_id = int(ids[i].item())
-            norm_bbox = bboxes[i].tolist()
-            score = float(scores[i].item()) if scores is not None else 1.0
-            label = int(labels[i].item()) if labels is not None else -1
+            inst_id = int(ids[i])
+            norm_bbox = list(bboxes[i])  # 保证是list类型
+            score = float(scores[i]) if scores is not None else 1.0
+            label = int(labels[i]) if labels is not None else -1
+
             instance_dict[inst_id].append((frame_idx, norm_bbox, score, label))
 
     return instance_dict

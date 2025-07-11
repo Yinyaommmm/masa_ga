@@ -1,1 +1,1 @@
-from .demo.masaqq_module import MASAQQ, load_video_as_numpy, convert_webp_to_mp4
+from .demo.masaqq_module import MASAQQ, load_video_as_numpy, convert_webp_to_mp4,CoarseCategory

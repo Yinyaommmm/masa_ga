@@ -1,6 +1,8 @@
 import os
 from typing import List,Dict
 import numpy as np
+
+
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 import gc
 import torch
@@ -13,7 +15,7 @@ from mmdet.apis import init_detector
 from mmdet.registry import VISUALIZERS
 from mmcv.ops import batched_nms
 
-from ..masa.apis import inference_masa, init_masa, inference_detector, build_test_pipeline
+from masa.apis import inference_masa, init_masa, build_test_pipeline
 from .utils import filter_and_update_tracks,timer
 from .convert import convert_webp_to_mp4
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -84,8 +86,6 @@ class MASAQQ:
         self.masa_model.cfg.visualizer['line_width'] = line_width
         self.visualizer = VISUALIZERS.build(self.masa_model.cfg.visualizer)
 
-        # # -- 初始化数据库连接
-        # self.db = DBConnector('mysql+mysqlconnector://user:password@localhost/your_database')
 
     @timer
     def inference_byVideoNumpy(self, video_data: np.ndarray):
@@ -163,7 +163,7 @@ class MASAQQ:
         categories = [cat for cat in categories if cat is not None] 
 
         return frames, instances_list, fps_list, pred_instances_list,categories  # video_fps should be set based on video data if needed
-
+    
     @timer
     def destroy(self):
         del self.masa_model
@@ -219,7 +219,7 @@ class MASAQQ:
 
         H, W = video_data.shape[1:3]
         instance_groups = group_instances_by_id(pred_instances_list)
-
+        print("This is instance_groups:",instance_groups)
         result_records = []
 
         for inst_id, bbox_list in instance_groups.items():
@@ -243,6 +243,7 @@ class MASAQQ:
             cropped_rgb = cropped[:, :, ::-1]  # BGR -> RGB
             img = Image.fromarray(cropped_rgb)
             save_path = output_path / f"{image_file_prefix}_instance_{inst_id}.png"
+            print("Inst_id",inst_id,"save_path",save_path)
             img.save(save_path)
 
             # 保存记录（便于后续写入数据库）

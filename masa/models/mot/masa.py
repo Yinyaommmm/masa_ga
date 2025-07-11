@@ -215,13 +215,14 @@ class MASA(BaseMOTModel):
         Returns:
             TrackSampleList: Tracking results of the inputs.
         """
+
         assert inputs.dim() == 5, "The img must be 5D Tensor (N, T, C, H, W)."
         assert (
             inputs.size(0) == 1
         ), "MASA inference only support 1 batch size per gpu for now."
 
         assert len(data_samples) == 1, "MASA only support 1 batch size per gpu for now."
-
+  
         track_data_sample = data_samples[0]
         video_len = len(track_data_sample)
         if track_data_sample[0].frame_id == 0:

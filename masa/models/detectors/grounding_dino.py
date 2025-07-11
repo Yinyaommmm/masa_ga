@@ -18,9 +18,11 @@ from mmengine.runner.amp import autocast
 from torch import Tensor
 import os 
 current_dir = os.path.dirname(os.path.abspath(__file__))
+import logging
+logger = logging.getLogger(__name__)
+already_import = False
 try:
     import os
-
     import nltk
     packages_dir = os.path.abspath(os.path.join(current_dir,"../../../packages"))
     download_dir = os.path.expanduser(packages_dir)
@@ -31,7 +33,7 @@ try:
     # nltk.download("averaged_perceptron_tagger", download_dir=download_dir, quiet=True) #这两行确实不需要了，因为本地下载好了
     
     nltk.data.path.append(download_dir)
-    print(f"请确保在{download_dir}安装了nltk_data文件, 否则无法运行")
+    logger.info(f"请确保在{download_dir}安装了nltk_data文件, 否则无法运行")
    
 except ImportError:
     raise RuntimeError(

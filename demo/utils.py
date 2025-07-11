@@ -396,14 +396,13 @@ def stabilize_labels(instances_list):
         id_label_distribution[tid] = sorted_labels
 
     # 打印每个轨迹的标签统计（可选，帮助了解整体情况）
-    print("\n===== 轨迹标签统计 =====")
+
     for tid, dist in id_label_distribution.items():
         total = sum(c for _, c in dist)
         dist_str = ", ".join([f"标签{l}: {c}次" for l, c in dist])
-        print(f"轨迹ID {tid}（共{total}帧）：{dist_str} → 主导标签：{id_to_dominant_label[tid]}")
+        # print(f"轨迹ID {tid}（共{total}帧）：{dist_str} → 主导标签：{id_to_dominant_label[tid]}")
 
     # 第三步：遍历所有帧，将同一 instance_id 的标签统一替换为主导标签，并打印替换记录
-    print("\n===== 标签替换记录 =====")
     replace_total = 0  # 统计总替换次数
     for frame_idx, inst in enumerate(instances_list):
         tracks = inst[0].pred_track_instances
@@ -426,7 +425,6 @@ def stabilize_labels(instances_list):
                 new_labels.append(dominant_label)
                 # 若标签不同，则打印替换信息
                 if dominant_label != original_label_int:
-                    print(f"帧{frame_idx} - 轨迹ID {tid_int}：标签从 {original_label_int} 替换为 {dominant_label}")
                     replace_total += 1
             else:
                 # 无主导标签时保留原标签
@@ -441,8 +439,6 @@ def stabilize_labels(instances_list):
         # 更新轨迹的标签
         tracks.labels = new_labels_tensor
 
-    print(f"\n===== 替换完成 =====")
-    print(f"共替换 {replace_total} 处标签")
 
     return instances_list
 def filter_and_update_tracks(instances_list, image_size, size_threshold=10000, coverage_threshold=0.75,
