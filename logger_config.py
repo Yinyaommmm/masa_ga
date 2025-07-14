@@ -33,4 +33,4 @@ def setup_logger(log_dir: str):
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
 
-        return logger
+    return logger

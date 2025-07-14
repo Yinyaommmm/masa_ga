@@ -1,16 +1,22 @@
+import asyncio
+import json
+import io
 from pathlib import Path
+import time
 from fastapi import Body, FastAPI, File, Form, UploadFile
 from fastapi.responses import JSONResponse
-from flask import json
 import numpy as np
-import io
 from typing import List
-from demo.masaqq_module import MASAQQ, CoarseCategory
+from demo.masaqq_module import MASAQQ
 from logger_config import setup_logger
-from pydantic import BaseModel
-from typing import List, Dict
-
+from server_type import serialize_instances_to_dicts, serialize_categories, SavePngRequest
+from z_cuda_redis_config import CUDA_DEVICES, MODEL_PER_DEVICE, REDIS_KEY, REDIS_HOST, REDIS_PORT
+import redis
+from datetime import datetime
+def now_str():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 # === 初始化 logger ===
+server_start_time = time.time()
 logger = setup_logger("./z_serverlog") 
 logger.info("==============New Server Start!================")
 logger.info("🚀 Logger started")
@@ -19,49 +25,24 @@ app = FastAPI()
 logger.info("🚀 FastAPI MASAQQ Server started")
 
 # === 模型加载 ===
-logger.info("✅ Loading MASA Model...")
-model = MASAQQ(device="cuda:1")
-logger.info("✅ MASAQQ model initialized on cuda:1")
+logger.info("... Loading MASA Model Pool...")
+r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
+worker_id = int(r.lpop(REDIS_KEY))
+device_index = CUDA_DEVICES[worker_id % len(CUDA_DEVICES) ]
+model = MASAQQ(device=f"cuda:{device_index}")
+logger.info(f"✅UviID:{worker_id} Cuda Idx: {device_index}. 模型初始化完毕.  耗时: {time.time() - server_start_time:.2f}秒")
 
-def serialize_instances_to_dicts(pred_instances_list):
-    result = []
-    for instance in pred_instances_list:
-        if instance is None:
-            continue
-        bboxes = instance.bboxes
-        scores = instance.scores if hasattr(instance, "scores") else None
-        labels = instance.labels if hasattr(instance, "labels") else None
-        ids = instance.instances_id
-
-        # 把每个InstanceData的所有字段先转成纯Python类型
-        new_instance = {
-            "bboxes": bboxes.tolist() if hasattr(bboxes, "tolist") else list(bboxes),
-            "scores": scores.tolist() if scores is not None and hasattr(scores, "tolist") else (list(scores) if scores is not None else []),
-            "labels": labels.tolist() if labels is not None and hasattr(labels, "tolist") else (list(labels) if labels is not None else []),
-            "instances_id": ids.tolist() if hasattr(ids, "tolist") else list(ids),
-        }
-        result.append(new_instance)
-    return result
-
-def serialize_categories(categories: List[CoarseCategory]) -> List[str]:
-    return [cat.real for cat in categories]
-
-class SavePngRequest(BaseModel):
-    pred_instances_list: List[Dict]
-    output_path: str
-    image_file_prefix: str
-    enlarge_scale: float
-    select_percentile: float
 
 @app.post("/inference")
 async def inference(file: UploadFile = File(...)):
+    model_wrapper = None  # 提前定义，防止 try 中异常导致未定义
+
     try:
-        logger.info(f"[/inference] Received file: {file.filename}")
         contents = await file.read()
         video_np = np.load(io.BytesIO(contents))
-
-        logger.info(f"[/inference] Running inference...")
+        logger.info(f"[worker {worker_id}] 🟢 Start inference at {now_str()}")
         _, _, _, pred_instances_list, categories = model.inference_byVideoNumpy(video_np)
+        logger.info(f"[worker {worker_id}] 🔴 End inference at {now_str()}")
 
         logger.info(f"[/inference]✅ Inference complete. Instances: {len(pred_instances_list)}")
 
@@ -76,6 +57,9 @@ async def inference(file: UploadFile = File(...)):
         logger.exception("❌ Inference failed")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+
+
+
 @app.post("/savepng")
 async def save_png_endpoint(
     file: UploadFile = File(...),
@@ -86,14 +70,14 @@ async def save_png_endpoint(
     savepng_req = SavePngRequest.model_validate(body_dict)
     try:
 
-        logger.info(f"[savepng] Received file: {file.filename}")
+        logger.info(f"[worker {worker_id}] [/savepng] Received file: {file.filename}")
         contents = await file.read()
         video_np = np.load(io.BytesIO(contents))
 
         output_path = Path(savepng_req.output_path)
         output_path.mkdir(parents=True, exist_ok=True)
-        logger.info(f"[savepng] Saving to {output_path}")
-        result = model.save_event_png(
+        logger.info(f"[worker {worker_id}] [/savepng] Saving to {output_path}")
+        result = MASAQQ.save_event_png(
             video_data=video_np,
             pred_instances_list=savepng_req.pred_instances_list,
             output_path=output_path,
@@ -108,7 +92,6 @@ async def save_png_endpoint(
     except Exception as e:
         logger.exception("❌ [savepng] Failed")
         return JSONResponse(status_code=500, content={"error": str(e)})
-
 
 @app.get("/hello")
 def hello():

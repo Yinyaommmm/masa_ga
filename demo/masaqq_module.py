@@ -85,8 +85,6 @@ class MASAQQ:
         self.masa_model.cfg.visualizer['save_dir'] = save_dir
         self.masa_model.cfg.visualizer['line_width'] = line_width
         self.visualizer = VISUALIZERS.build(self.masa_model.cfg.visualizer)
-
-
     @timer
     def inference_byVideoNumpy(self, video_data: np.ndarray):
         """
@@ -190,7 +188,8 @@ class MASAQQ:
         imageio.mimsave(output_path, frames, duration=1 / fps_value, loop=0)
 
     # @timer 太短了根本不用
-    def save_event_png(self,
+    @staticmethod
+    def save_event_png(
                     video_data: np.ndarray,
                     pred_instances_list: List[dict],
                     output_path: Path,
