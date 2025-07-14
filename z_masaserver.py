@@ -15,19 +15,19 @@ import redis
 from datetime import datetime
 def now_str():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-# === 初始化 logger ===
-server_start_time = time.time()
-logger = setup_logger("./z_serverlog") 
-logger.info("==============New Server Start!================")
-logger.info("🚀 Logger started")
-# === FastAPI app ===
-app = FastAPI()
-logger.info("🚀 FastAPI MASAQQ Server started")
 
-# === 模型加载 ===
-logger.info("... Loading MASA Model Pool...")
+# === 获取WorkerID ===
 r = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=0)
 worker_id = int(r.lpop(REDIS_KEY))
+
+# === 初始化 logger ===
+server_start_time = time.time()
+logger = setup_logger("./z_serverlog",worker_id=worker_id) 
+logger.info("==============New Server Start!================")
+# === FastAPI app ===
+app = FastAPI()
+logger.info("🚀 FastAPI MASAQQ Server started. Loading MASA Model Pool...")
+# === 模型加载 ===
 device_index = CUDA_DEVICES[worker_id % len(CUDA_DEVICES) ]
 model = MASAQQ(device=f"cuda:{device_index}")
 logger.info(f"✅UviID:{worker_id} Cuda Idx: {device_index}. 模型初始化完毕.  耗时: {time.time() - server_start_time:.2f}秒")
@@ -35,16 +35,16 @@ logger.info(f"✅UviID:{worker_id} Cuda Idx: {device_index}. 模型初始化完�
 
 @app.post("/inference")
 async def inference(file: UploadFile = File(...)):
-    model_wrapper = None  # 提前定义，防止 try 中异常导致未定义
 
     try:
         contents = await file.read()
         video_np = np.load(io.BytesIO(contents))
-        logger.info(f"[worker {worker_id}] 🟢 Start inference at {now_str()}")
+        logger.info(f"[/inference] 🟢 Start inference at {now_str()}")
+        start_time = time.time()
         _, _, _, pred_instances_list, categories = model.inference_byVideoNumpy(video_np)
-        logger.info(f"[worker {worker_id}] 🔴 End inference at {now_str()}")
+        logger.info(f"[/inference] 🔴 End inference at {now_str()}, elapse = {time.time()-start_time :.2f}")
 
-        logger.info(f"[/inference]✅ Inference complete. Instances: {len(pred_instances_list)}")
+        logger.info(f"[/inference] ✅ Inference complete. Instances: {len(pred_instances_list)}")
 
         response_data = {
             "pred_instances_list": serialize_instances_to_dicts(pred_instances_list),

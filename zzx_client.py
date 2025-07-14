@@ -105,7 +105,7 @@ def inference_only(index: int):
     return index
 
 if __name__ == "__main__":
-    para_num = 128
+    para_num = 16
     print(f"开始并行测试 {para_num} 组 test_inference + test_save_png...")
     start_time = time.time()
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(para_num,16)) as executor:

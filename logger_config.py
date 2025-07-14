@@ -1,19 +1,26 @@
+from datetime import datetime
 import logging
 from logging.handlers import TimedRotatingFileHandler
-from datetime import datetime
 import os
+from typing import Optional
 
-def setup_logger(log_dir: str):
+
+class WorkerLoggerAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        return f"[worker {self.extra['worker_id']}] {msg}", kwargs
+
+
+def setup_logger(log_dir: str, worker_id: Optional[int] = None):
     os.makedirs(log_dir, exist_ok=True)
 
     today_str = datetime.now().strftime("%Y%m%d")
     log_file_path = os.path.join(log_dir, f"{today_str}.log")
 
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    base_logger = logging.getLogger()
+    base_logger.setLevel(logging.INFO)
 
     # 避免重复添加 Handler
-    if not any(isinstance(h, TimedRotatingFileHandler) for h in logger.handlers):
+    if not any(isinstance(h, TimedRotatingFileHandler) for h in base_logger.handlers):
         file_handler = TimedRotatingFileHandler(
             filename=log_file_path,
             when='midnight',
@@ -26,11 +33,15 @@ def setup_logger(log_dir: str):
 
         formatter = logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s")
         file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+        base_logger.addHandler(file_handler)
 
         # 控制台输出（可选）
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)
-        logger.addHandler(console_handler)
+        base_logger.addHandler(console_handler)
 
-    return logger
+    # 包装 LoggerAdapter（增加 worker_id）
+    if worker_id is not None:
+        return WorkerLoggerAdapter(base_logger, {"worker_id": worker_id})
+    else:
+        return base_logger
