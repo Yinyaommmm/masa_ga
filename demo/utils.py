@@ -7,7 +7,7 @@ from mmdet.models.task_modules.assigners import BboxOverlaps2D
 from mmengine.structures import InstanceData
 import functools
 import torch
-from collections import defaultdict
+
 def timer(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -203,10 +203,7 @@ def remove_static_tracks(instances_list, image_size, base_static_threshold=20, b
         base_static_threshold: 在 base_height 分辨率下判断为“静止”的阈值（像素）。
         base_height: 用于缩放 static_threshold 的基准高度（默认360）。
     """
-    from collections import defaultdict
-    from mmengine.structures import InstanceData
-    import torch
-    import numpy as np
+
 
     def compute_center(bbox):
         x1, y1, x2, y2 = bbox
@@ -249,7 +246,10 @@ def remove_static_tracks(instances_list, image_size, base_static_threshold=20, b
 
     dynamic_ids = set()
     for tid, centers in id_to_centers.items():
-        if trajectory_movement(centers) >= scaled_threshold:
+        if len(centers) <= 1:
+            # 如果该轨迹只出现过 1 帧，默认保留
+            dynamic_ids.add(tid)
+        elif trajectory_movement(centers) >= scaled_threshold:
             dynamic_ids.add(tid)
 
     for inst in instances_list:
@@ -456,8 +456,8 @@ def filter_and_update_tracks(instances_list, image_size, size_threshold=10000, c
     # Step 4: Remove nearly-static tracks
     instances_list = remove_static_tracks(instances_list, image_size, base_static_threshold=base_static_threshold, base_height=360)
 
-    # Step 5: Remove short-lifetime tracks
-    instances_list = remove_short_tracks(instances_list, min_duration=min_duration)
+    # # Step 5: Remove short-lifetime tracks
+    # instances_list = remove_short_tracks(instances_list, min_duration=min_duration)
 
     # Step 6: Remove low-conf tracks
     instances_list= filter_low_threshold_instances(instances_list, confidence_threshold=confidence_threshold)
