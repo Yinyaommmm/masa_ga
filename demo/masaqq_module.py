@@ -15,7 +15,7 @@ from mmdet.apis import init_detector
 from mmdet.registry import VISUALIZERS
 from mmcv.ops import batched_nms
 
-from masa.apis import inference_masa, init_masa, build_test_pipeline
+from masa.masa.apis import inference_masa, init_masa, build_test_pipeline
 from .utils import filter_and_update_tracks,timer
 from .convert import convert_webp_to_mp4
 current_dir = os.path.dirname(os.path.abspath(__file__))
